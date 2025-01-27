@@ -112,35 +112,26 @@ class AttentionFusion(nn.Module):
         super(AttentionFusion, self).__init__()
 
     def forward(self, Q, K):
-        """
-        前向传播函数，计算注意力融合
-
-        参数:
-        Q: 查询 (Query) 张量，形状为 (batch_size, d_k)
-        K: 键 (Key) 和 值 (Value) 张量，形状为 (batch_size, sentence_nums, d_k)
-
-        返回:
-        输出张量，形状为 (batch_size, sentence_nums, d_k)，表示融合后的句子表征
-        """
+ 
         batch_size, sentence_nums, d_k = K.size()
 
-        # 将Q扩展成(batch_size, 1, d_k)以匹配K的维度
+     
         Q_expanded = Q.unsqueeze(1)  # (batch_size, 1, d_k)
 
-        # 计算注意力分数 scores = Q * K^T / sqrt(d_k)
+     
         scores = torch.matmul(Q_expanded, K.transpose(-2, -1)) / math.sqrt(d_k)
 
-        # 应用softmax函数获得注意力权重，dim=-1表示在最后一个维度上计算softmax
+    
         attn_weights = torch.softmax(scores, dim=-1)
 
-        # 加权求和得到输出，保持sentence_nums维度不变
+     
         output = torch.matmul(attn_weights, K)  # (batch_size, 1, d_k)
 
-        # 挤掉中间的1维度，并确保输出与K有相同的shape
+   
         output = output.squeeze(1)  # (batch_size, d_k)
         output = output.unsqueeze(1).expand(-1, sentence_nums, -1)  # (batch_size, sentence_nums, d_k)
 
-        # 将原始句子表征与通过attention得到的特征相加（或使用其他融合方式）
+     
         fused_output = K + output  # (batch_size, sentence_nums, d_k)
 
         return fused_output
@@ -206,7 +197,7 @@ class TokenLevelNetwork(nn.Module):
         logits, _ = self.sentence_interaction(x, x, x, key_padding_mask=sentence_padding_mask)
 
 
-        # manual_feature 与 setence表征融合
+ 
         # x 1， 256， 768   manual_feature->Q x->K,v
 
         # logits = self.classifier(x)
@@ -359,10 +350,9 @@ class Model(nn.Module):
         outputs = self.encoder(input_ids=inputs_ids, attention_mask=attn_masks, output_attentions=output_attentions)
 
         last_layer_attn_weights = outputs.attentions[self.config.num_hidden_layers - 1][:, :, 0].detach() if output_attentions else None
-        # 取code bert CLS token和专家特征进行融合
-        # han则是用Bi LSTM和attention讲line ids进行了类内的计算  并且以han对每个code line进行了结果预测
+ 
         logits = self.classifier(outputs[0], manual_features)  # outputs[0] 1 512 768
-        # 希望专家特征也能对句子进行影响
+
         han_logits = self.han_locator(line_ids, manual_features)
 
         # logits = self.fusion_fc(torch.cat((logits, han_outputs), dim=-1))
