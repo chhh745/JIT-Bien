@@ -71,12 +71,7 @@ class MultiFocalLoss(nn.Module):
 
 
 class Attention(nn.Module):       #x:[batch, seq_len, hidden_dim*2]
-    """
-        此注意力的计算步骤：
-        1.将输入（包含lstm的所有时刻的状态输出）和w矩阵进行矩阵相乘，然后用tanh压缩到(-1, 1)之间
-        2.然后再和矩阵u进行矩阵相乘后，矩阵变为1维，然后进行softmax变化即得到注意力得分。
-        3.将输入和此注意力得分线性加权，即相当于将所有时刻的状态进行了一个聚合。
-    """
+    
     def __init__(self, hidden_size, need_aggregation=True):
         super().__init__()
         self.need_aggregation = need_aggregation
@@ -94,11 +89,6 @@ class Attention(nn.Module):       #x:[batch, seq_len, hidden_dim*2]
         u = torch.tanh(torch.matmul(x, self.w))         #[batch, seq_len, hidden_size*2]
         score = torch.matmul(u, self.u)                   #[batch, seq_len, 1]
         att = F.softmax(score, dim=1)
-        # 下面操作即线性加权
-        scored_x = x * att                              #[batch, seq_len, hidden_size*2]
-
-        # 因为词encoder和句encoder后均带有attention机制，而我需要做的是代码行级缺陷检测，
-        # 所以句encoder后我不做聚合，相当于将每个代码行看做一个样本来传入全连接分类。
         if self.need_aggregation:
             context = torch.sum(scored_x, dim=1)                  #[batch, hidden_size*2]
             return context
